@@ -126,3 +126,199 @@ Testing the Solution
 
 
 Let me know if the fixes work, partner. Ready to assist further if needed! 
+
+
+
+
+Got it, partner! Saving text, images, and formatting separately changes the approach to structuring your data and the way it's stored. Here’s how we can adjust the implementation for this separation while retaining the integrity of your blog content:
+
+Step 1: Adjust Froala Content Parsing
+Instead of saving the entire HTML content, parse the text, images, and formatting separately. Froala provides event hooks and content APIs that allow us to extract specific parts of the editor’s content.
+Extract Text:
+We can use Froala's html.get API to extract plain text for querying.
+editorInstance.html.get(true); // Returns content with no formatting
+
+
+Extract Images:
+Images can be identified by iterating through <img> tags in the content. Extract their src attributes for uploading to S3.
+Extract Formatting:
+Save the rich HTML content without images or text for reapplying formatting later.
+editorInstance.html.get(); // Returns full HTML content
+
+
+
+Step 2: Modify Backend for Separate Storage
+The backend now needs to handle text, images, and formatting separately.
+Backend API: Save Content
+const express = require("express");
+const mongoose = require("mongoose");
+const AWS = require("aws-sdk");
+const app = express();
+
+app.use(express.json());
+
+// Configure AWS SDK for S3
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
+
+// Define MongoDB schema and model
+const blogSchema = new mongoose.Schema({
+  text: String, // Plain text for querying
+  formatting: String, // HTML content for formatting
+  images: [String], // S3 URLs for images
+  createdAt: { type: Date, default: Date.now },
+});
+const Blog = mongoose.model("Blog", blogSchema);
+
+// Save blog content
+app.post("/v1/blog/save", async (req, res) => {
+  const { text, images, formatting } = req.body;
+
+  try {
+    // Upload images to S3 and get URLs
+    const imageUrls = [];
+    for (const image of images) {
+      const buffer = Buffer.from(image.split(",")[1], "base64");
+      const uploadedImage = await s3
+        .upload({
+          Bucket: "your-s3-bucket-name",
+          Key: `blogs/${Date.now()}.jpg`,
+          Body: buffer,
+          ContentType: "image/jpeg",
+        })
+        .promise();
+
+      imageUrls.push(uploadedImage.Location);
+    }
+
+    // Save blog to MongoDB
+    const blog = new Blog({ text, formatting, images: imageUrls });
+    await blog.save();
+    res.status(200).send({ message: "Blog post saved successfully!" });
+  } catch (error) {
+    console.error("Error saving blog post:", error);
+    res.status(500).send({ message: "Error saving blog post." });
+  }
+});
+
+// Start server
+mongoose
+  .connect("mongodb://localhost:27017/blogs", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => app.listen(8080, () => console.log("Server running on port 8080")));
+
+
+
+Step 3: Adjust Frontend Logic
+Split Froala Editor content into text, images, and formatting when saving.
+Parse Froala Content
+<button
+  onClick={() => {
+    const editorInstance = FroalaEditor.getInstance(); // Access Froala instance
+
+    // Extract Text
+    const plainText = editorInstance.html.get(true);
+
+    // Extract Images
+    const imageUrls = [];
+    const htmlContent = editorInstance.html.get();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, "text/html");
+    const images = doc.querySelectorAll("img");
+    images.forEach((img) => imageUrls.push(img.src));
+
+    // Extract Formatting
+    const formatting = htmlContent.replace(/<img[^>]*>/g, ""); // Remove image tags
+
+    // Send to Backend
+    fetch("http://localhost:8080/v1/blog/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: plainText,
+        images: imageUrls,
+        formatting: formatting,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((err) => console.error(err));
+  }}
+  className={styles.saveButton}
+>
+  Save
+</button>
+
+
+
+Step 4: Regenerate Content
+When the user revisits the MainPage, reconstruct the blog using text, formatting, and images fetched from the backend.
+Backend: Retrieve Content
+app.get("/v1/blog/latest", async (req, res) => {
+  try {
+    const blog = await Blog.findOne().sort({ createdAt: -1 }); // Get the latest blog
+    if (blog) {
+      res.status(200).send({
+        text: blog.text,
+        images: blog.images,
+        formatting: blog.formatting,
+      });
+    } else {
+      res.status(404).send({ message: "No blog content found." });
+    }
+  } catch (error) {
+    console.error("Error fetching blog content:", error);
+    res.status(500).send({ message: "Error fetching blog content." });
+  }
+});
+
+
+Frontend: Regenerate Content
+useEffect(() => {
+  fetch("http://localhost:8080/v1/blog/latest")
+    .then((res) => res.json())
+    .then((data) => {
+      const regeneratedContent = data.formatting;
+
+      // Add Images Back
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(regeneratedContent, "text/html");
+      data.images.forEach((src, index) => {
+        const imgTag = `<img src="${src}" alt="image-${index}" />`;
+        doc.body.innerHTML = doc.body.innerHTML.replace(`<!-- image-${index} -->`, imgTag);
+      });
+
+      setContent(doc.body.innerHTML); // Restore content in Froala Editor
+    })
+    .catch((err) => console.error("Error fetching blog content:", err));
+}, []);
+
+
+
+Step 5: Export to PDF
+The logic for exporting remains unchanged. Freemarker will still process the formatting HTML and render it into a PDF.
+
+Benefits of this Approach
+- Text Querying:- Enables efficient querying since the text is stored separately.
+
+- Optimized Storage:- Stores images in S3 rather than MongoDB, reducing database load.
+
+- Reconstruction:- Maintains the integrity of formatting and structure during regeneration.
+
+
+
+Testing
+- Save Content:- Verify text, images, and formatting are stored separately.
+
+- Regenerate Content:- Ensure the formatting and images are restored correctly when visiting the page.
+
+- Export PDF:- Confirm that the exported PDF retains the formatting and structure.
+
+
+Let me know how this refined plan works for you!
+
