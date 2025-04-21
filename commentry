@@ -1,0 +1,128 @@
+Error Analysis
+The Froala Editor may require its dependencies to be properly installed and initialized. Here's a systematic way to resolve it:
+
+Fix the Error
+- Check Froala Installation: Ensure that all dependencies for Froala are installed. Run the following command in your terminal:npm install froala-editor react-froala-wysiwyg
+
+- Verify Froala Styles: Froala Editor relies on its styles. Confirm that the following CSS imports are included:import "froala-editor/css/froala_editor.pkgd.min.css";
+import "froala-editor/css/froala_style.min.css";
+
+- Initialization Check: Froala may fail if its model value (content) is initially null. Ensure that content has a default value, e.g., an empty string:const { content, setContent } = useContentStore();
+const defaultContent = content || ""; // Initialize content safely
+
+- Froala Editor Configuration: Some Froala configurations (e.g., toolbar options or tags) may break if misconfigured. Use the following example:<FroalaEditor
+  tag="textarea"
+  model={content}
+  onModelChange={(model: string) => setContent(model)}
+  config={{
+    toolbarButtons: ["bold", "italic", "underline", "paragraphFormat"],
+    placeholderText: "Start writing your blog...",
+    pluginsEnabled: ["align", "charCounter", "codeView"],
+  }}
+/>
+
+- Restart Development Server: After confirming the fixes, clean the cache and restart your app:npm cache clean --force
+npm start
+
+
+
+Full Toolbar Options
+For Froala Editor, you can configure the toolbar to include all available options. Here’s the list of full toolbar buttons:
+[
+  "bold",
+  "italic",
+  "underline",
+  "strikeThrough",
+  "subscript",
+  "superscript",
+  "fontFamily",
+  "fontSize",
+  "textColor",
+  "backgroundColor",
+  "inlineClass",
+  "inlineStyle",
+  "paragraphFormat",
+  "paragraphStyle",
+  "align",
+  "formatOL",
+  "formatUL",
+  "outdent",
+  "indent",
+  "quote",
+  "insertLink",
+  "insertImage",
+  "insertVideo",
+  "insertTable",
+  "emoticons",
+  "specialCharacters",
+  "insertHR",
+  "selectAll",
+  "clearFormatting",
+  "print",
+  "help",
+  "html",
+  "undo",
+  "redo",
+  "fullscreen",
+  "spellChecker",
+  "insertFile"
+]
+
+
+Example Toolbar Configuration:
+To enable all options:
+config={{
+  toolbarButtons: [
+    "bold",
+    "italic",
+    "underline",
+    "strikeThrough",
+    "subscript",
+    "superscript",
+    "fontFamily",
+    "fontSize",
+    "textColor",
+    "backgroundColor",
+    "inlineClass",
+    "inlineStyle",
+    "paragraphFormat",
+    "paragraphStyle",
+    "align",
+    "formatOL",
+    "formatUL",
+    "outdent",
+    "indent",
+    "quote",
+    "insertLink",
+    "insertImage",
+    "insertVideo",
+    "insertTable",
+    "emoticons",
+    "specialCharacters",
+    "insertHR",
+    "selectAll",
+    "clearFormatting",
+    "print",
+    "help",
+    "html",
+    "undo",
+    "redo",
+    "fullscreen",
+    "spellChecker",
+    "insertFile"
+  ],
+  placeholderText: "Start writing your blog...",
+  pluginsEnabled: ["align", "charCounter", "codeView", "emoticons"]
+}}
+
+
+
+Testing the Solution
+- Resolve the Error:- Run npm start and confirm that Froala Editor loads without errors.
+
+- Verify Toolbar Options:- Check that all toolbar buttons are visible and functional.
+
+- Content Handling:- Test editing text, changing the format, and switching themes.
+
+
+Let me know if the fixes work, partner. Ready to assist further if needed! 
